@@ -1,12 +1,11 @@
+import * as Location from "expo-location";
+import * as Permissions from "expo-permissions";
 import React, { Component } from "react";
-import { Dimensions, StyleSheet } from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
+import { Dimensions } from "react-native";
+import MapView from "react-native-maps";
 
 const { width, height } = Dimensions.get("window");
 const ASPECT_RATIO = width / height;
-const LATITUDE = 37.771707;
-const LONGITUDE = -122.4053769;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
@@ -188,30 +187,64 @@ class App extends Component {
           latitude: 37.771707,
           longitude: -122.4053769
         }
-      ]
+      ],
+      isLoading: true
     };
 
     this.mapView = null;
   }
 
+  componentDidMount() {
+    this._getLocationAsync();
+  }
+
+  _getLocationAsync = async () => {
+    let { status } = await Permissions.askAsync(Permissions.LOCATION);
+    if (status !== "granted") {
+      this.setState({
+        errorMessage: "Permission to access location was denied"
+      });
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+    this.setState({
+      location: {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+      },
+      isLoading: false
+    });
+  };
+
   render() {
+    if (this.state.isLoading) {
+      return null;
+    }
+
     return (
       <MapView
         initialRegion={{
-          latitude: LATITUDE,
-          longitude: LONGITUDE,
+          latitude: this.state.location.latitude,
+          longitude: this.state.location.longitude,
           latitudeDelta: LATITUDE_DELTA,
           longitudeDelta: LONGITUDE_DELTA
         }}
-        provider={PROVIDER_GOOGLE}
-        style={StyleSheet.absoluteFill}
+        style={{
+          height: height / 2
+        }}
         ref={c => (this.mapView = c)}
         customMapStyle={MAPS_STYLE}
       >
-        {this.state.coordinates.map((coordinate, index) => (
+        {/* {this.state.coordinates.map((coordinate, index) => (
           <MapView.Marker key={`coordinate_${index}`} coordinate={coordinate} />
-        ))}
-        {this.state.coordinates.length >= 2 && (
+        ))} */}
+        {this.state.location && (
+          <MapView.Marker
+            key={`coordinate_location`}
+            coordinate={this.state.location}
+          />
+        )}
+        {/* {this.state.coordinates.length >= 2 && (
           <MapViewDirections
             origin={this.state.coordinates[0]}
             waypoints={
@@ -248,7 +281,7 @@ class App extends Component {
               // console.log('GOT AN ERROR');
             }}
           />
-        )}
+        )} */}
       </MapView>
     );
   }
